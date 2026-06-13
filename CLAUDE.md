@@ -95,10 +95,15 @@ The home hero % is cost-weighted across all projects.
 ### Hard-won invariants — do not regress these
 
 - **`#app` is a fixed viewport box pinned by `position:fixed; inset:0`**
-  on phones — never size it with `100dvh`/`100vh` (iOS standalone PWAs
-  compute those short, leaving a dead strip under the nav). Only `.scroll`
-  and `.ov-scroll` scroll. This is what keeps the bottom nav permanently
-  pinned. Never let page-level scrolling come back.
+  on phones, **plus a JS `visualViewport` height sync** (bottom of the
+  script). The sync works around an iOS 26 WebKit bug (rdar 158055568)
+  where standalone PWAs compute the layout viewport too short — without
+  it there's a dead strip under the nav and the UI drifts after
+  keyboard/scroll interactions. CSS units (`100dvh`/`100vh`/`inset:0`)
+  all resolve against the same broken layout viewport, so they can't fix
+  it — don't remove the JS sync even if the CSS looks sufficient. Only
+  `.scroll` and `.ov-scroll` scroll. This is what keeps the bottom nav
+  permanently pinned. Never let page-level scrolling come back.
 - **`.after-layer` in the slider must stay `position:absolute; inset:0`** —
   its `clip-path` is what creates the before/after reveal. (Earlier bug: an
   unpositioned layer made before and after look identical.)

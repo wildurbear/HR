@@ -67,7 +67,9 @@
     #app{
       position:relative;
       inset:auto;
-      height:min(900px,96dvh);
+      /* !important: must beat the inline height set by the phone-size
+         visualViewport sync if the window crosses the breakpoint */
+      height:min(900px,96dvh)!important;
       border-radius:42px;
       box-shadow:0 0 0 11px #15171c, 0 0 0 13px #2b2f37, 0 40px 90px rgba(0,0,0,.45);
     }
@@ -1317,6 +1319,34 @@ document.querySelectorAll('#filters .filter').forEach(f=>{
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
+
+/* ----------------------------------------------------------
+   iOS 26 WebKit bug workaround (rdar 158055568): standalone
+   PWAs compute the layout viewport too short — "viewport-sized
+   fixed containers" leave a dead strip under bottom-fixed UI,
+   and fixed elements drift after keyboard/scroll interactions.
+   The *visual* viewport reports the true visible size, so size
+   the shell from it and re-sync on every change; also keep the
+   window pinned to 0 so the layout viewport can't wander.
+   No-op where the bug doesn't exist (height comes out the same).
+---------------------------------------------------------- */
+(function(){
+  const vv = window.visualViewport;
+  if(!vv) return;
+  const app = document.getElementById('app');
+  function sync(){
+    if(window.innerWidth >= 480){ app.style.height=''; return; } // desktop phone-frame sizes itself
+    app.style.height = Math.round(vv.height) + 'px';
+    if(window.scrollY || window.scrollX) window.scrollTo(0,0);
+  }
+  vv.addEventListener('resize', sync);
+  vv.addEventListener('scroll', sync);
+  window.addEventListener('resize', sync);
+  window.addEventListener('pageshow', sync);
+  window.addEventListener('orientationchange', ()=>setTimeout(sync, 250));
+  matchMedia('(min-width:480px)').addEventListener('change', sync);
+  sync();
+})();
 
 function renderAll(){renderHome();renderProjects();renderBudget();}
 renderAll();
