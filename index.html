@@ -37,10 +37,15 @@
     --nav-h:64px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;height:100%;}
+  /* Root canvas + mobile body are PLASTER so the iOS-26 standalone
+     viewport bug — which leaves a ~59px band of physical screen below
+     #app (the layout viewport is shorter than the panel) — blends with
+     the app surface instead of flashing the darker desktop backdrop.
+     The #cfcabd backdrop is re-applied to body only at the >=480px
+     desktop phone-frame breakpoint. */
+  html,body{margin:0;padding:0;height:100%;background:var(--plaster);}
   body{
     font-family:var(--body);
-    background:#cfcabd;
     color:var(--ink);
     -webkit-font-smoothing:antialiased;
     overscroll-behavior-y:none;
@@ -63,7 +68,7 @@
     overflow:hidden;
   }
   @media(min-width:480px){
-    body{display:flex;align-items:center;justify-content:center;padding:24px;}
+    body{display:flex;align-items:center;justify-content:center;padding:24px;background:#cfcabd;}
     #app{
       position:relative;
       inset:auto;

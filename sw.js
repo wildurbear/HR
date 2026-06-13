@@ -1,7 +1,7 @@
 /* Reno Board service worker — mockup phase.
    Network-first for same-origin requests so design iterations show up
    immediately on the phone; falls back to cache when offline. */
-const CACHE = 'reno-board-v1';
+const CACHE = 'reno-board-v2';
 const PRECACHE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', e => {

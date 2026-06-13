@@ -42,9 +42,16 @@ note what the real implementation would need later.
   desktop "phone frame" preview at ≥480px, but every decision is made for
   touch: thumb-reachable controls, 44px+ tap targets, bottom nav, sheets
   instead of modals.
-- **Hosted on GitHub Pages** (repo `wildurbear/HR`, `main` branch, root) at
-  <https://wildurbear.github.io/HR/> — that's how it gets onto the phone.
-  Pushing to `main` deploys.
+- **Hosted on GitHub Pages** (repo `wildurbear/HR`) at
+  <https://wildurbear.github.io/HR/> plus a custom domain. Pages **Source
+  is set to "GitHub Actions"** (not "Deploy from a branch"), so deploys
+  run via `.github/workflows/deploy-pages.yml` — a no-build workflow that
+  uploads the repo root as the Pages artifact on every push to `main`.
+  Pushing to `main` deploys (~1–2 min). The custom domain is configured
+  in Pages settings; GitHub keeps a `CNAME` file in the repo for it — if
+  the domain ever 404s, confirm that file is intact and DNS still points
+  at GitHub. There is no `gh` CLI on this machine ([[no-gh-cli]]), so
+  Pages settings changes happen in the GitHub web UI.
 - **PWA via Add to Home Screen.** Real `manifest.webmanifest` + PNG icons +
   a minimal network-first service worker (`sw.js`, same-origin GETs only,
   cache fallback when offline). SW registration is skipped on `file://`.
@@ -96,18 +103,50 @@ The home hero % is cost-weighted across all projects.
 
 - **`#app` is a fixed viewport box pinned by `position:fixed; inset:0`**
   on phones, **plus a JS `visualViewport` height sync** (bottom of the
-  script). The sync works around an iOS 26 WebKit bug (rdar 158055568)
-  where standalone PWAs compute the layout viewport too short — without
-  it there's a dead strip under the nav and the UI drifts after
-  keyboard/scroll interactions. CSS units (`100dvh`/`100vh`/`inset:0`)
-  all resolve against the same broken layout viewport, so they can't fix
-  it. The sync sizes `#app` from `visualViewport.height` (the true
-  visible height — on-device the notch device reported inner==vv==873
-  while `screen.height`==932 is the full panel incl. notch + indicator,
-  so `screen.height` overshoots by the top inset — do NOT use it).
-  Don't remove the JS sync even if the CSS looks sufficient. Only
-  `.scroll` and `.ov-scroll` scroll. This is what keeps the bottom nav
-  permanently pinned. Never let page-level scrolling come back.
+  script) sizing it to `visualViewport.height`. Only `.scroll` and
+  `.ov-scroll` scroll — this is what keeps the bottom nav permanently
+  pinned. Never let page-level scrolling come back. See the dedicated
+  section below for the iOS-26 viewport bug this works around.
+
+### ⚠️ The iOS 26 standalone-PWA viewport bug (still partly open)
+
+This caused days of churn; here is the full picture so it isn't
+re-litigated. It's a real WebKit bug — rdar 158055568, fixed in
+**Safari/iOS 26.1**. On iOS 26.0.x installed PWAs it persists, so the
+app defends itself. **Updating the phone to iOS 26.1+ is the actual
+cure**; our mitigations just make 26.0 tolerable.
+
+On-device diagnostics (iPhone with notch, triple-tap the avatar) read:
+`inner == visualViewport == documentElement == 430×873`, but
+`screen == 430×932`, `safe-area-inset top:59 bottom:34`. So:
+
+- **The layout/visual viewport (873) is shorter than the physical panel
+  (932) by exactly the 59px top inset.** Every CSS unit
+  (`100dvh`/`100vh`/`inset:0`) and even `visualViewport.height` resolve
+  against this short 873 viewport — none of them can describe the full
+  panel. That's why the long chain of CSS-only and `visualViewport`
+  fixes all failed.
+- The webview is anchored at the top, so there's a **~59px band of
+  physical screen below `#app` that web content cannot paint into.**
+  Sizing `#app` to `screen.height` (932) does NOT fill it (the 8:44
+  attempt proved this) and overshoots, shoving the nav partly off the
+  visible 873 and clipping its labels — do NOT chase the gap with height.
+
+**What we actually do (two independent mitigations, keep both):**
+1. The JS `visualViewport` sync sizes `#app = visualViewport.height` and
+   re-syncs on resize/scroll/rotate/pageshow/breakpoint, pinning
+   `window.scrollTo(0,0)`. This gives the nav its correct full-label
+   layout and fixes the post-interaction *drift* (the "double-tap Home
+   goes wonky" symptom). Do NOT remove it or swap in CSS units.
+2. **`html` and `body` background = `var(--plaster)` on phones** (the
+   `#cfcabd` desktop backdrop is re-applied only at `≥480px`). This makes
+   the un-paintable 59px band below `#app` blend into the app surface
+   instead of flashing the darker backdrop. This is the cosmetic half of
+   the fix and the reason the strip stops being visible.
+
+If a future device still shows a visible seam, the next lever is the
+manifest `background_color` (already `#E9E6DF` plaster) and the
+`theme_color`; do not reintroduce `screen.height` sizing.
 - **`.after-layer` in the slider must stay `position:absolute; inset:0`** —
   its `clip-path` is what creates the before/after reveal. (Earlier bug: an
   unpositioned layer made before and after look identical.)
