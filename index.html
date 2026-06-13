@@ -48,12 +48,13 @@
   /* Phone shell.
      MOBILE-FIRST FIX: the shell is always a fixed-height viewport box,
      so the ONLY thing that scrolls is the inner .scroll area.
-     => bottom nav is permanently pinned, page never scrolls under it. */
+     => bottom nav is permanently pinned, page never scrolls under it.
+     Sized by inset:0 alone — NOT 100dvh/100vh, which iOS standalone
+     PWAs compute short and leave a dead strip below the nav. */
   #app{
     position:fixed;
     inset:0;
     width:100%;
-    height:100dvh;
     max-width:430px;
     margin:0 auto;
     background:var(--plaster);

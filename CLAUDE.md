@@ -94,9 +94,11 @@ The home hero % is cost-weighted across all projects.
 
 ### Hard-won invariants — do not regress these
 
-- **`#app` is a fixed-height viewport box** (`position:fixed; height:100dvh`
-  on phones). Only `.scroll` and `.ov-scroll` scroll. This is what keeps the
-  bottom nav permanently pinned. Never let page-level scrolling come back.
+- **`#app` is a fixed viewport box pinned by `position:fixed; inset:0`**
+  on phones — never size it with `100dvh`/`100vh` (iOS standalone PWAs
+  compute those short, leaving a dead strip under the nav). Only `.scroll`
+  and `.ov-scroll` scroll. This is what keeps the bottom nav permanently
+  pinned. Never let page-level scrolling come back.
 - **`.after-layer` in the slider must stay `position:absolute; inset:0`** —
   its `clip-path` is what creates the before/after reveal. (Earlier bug: an
   unpositioned layer made before and after look identical.)
