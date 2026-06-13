@@ -34,15 +34,22 @@ note what the real implementation would need later.
 
 ## Tech constraints
 
-- **Single self-contained file:** `reno-board.html`. Plain HTML/CSS/vanilla JS.
-  Keep it that way for now — the owner sideloads this one file onto a phone.
+- **One app file:** `index.html`. Plain HTML/CSS/vanilla JS — no build step,
+  no bundler, no npm. The only sibling files are PWA plumbing
+  (`manifest.webmanifest`, `sw.js`, `icon-{180,192,512}.png`).
+  All app code stays in `index.html`.
 - **Mobile-first, phone-only usage.** Target viewport ~390×844. There is a
   desktop "phone frame" preview at ≥480px, but every decision is made for
   touch: thumb-reachable controls, 44px+ tap targets, bottom nav, sheets
   instead of modals.
-- **PWA via Add to Home Screen.** Manifest + icon are generated inline as a
-  blob at runtime. No service worker yet (a single `file://` file can't
-  register one; that comes when the file is eventually hosted).
+- **Hosted on GitHub Pages** (repo `wildurbear/HR`, `main` branch, root) at
+  <https://wildurbear.github.io/HR/> — that's how it gets onto the phone.
+  Pushing to `main` deploys.
+- **PWA via Add to Home Screen.** Real `manifest.webmanifest` + PNG icons +
+  a minimal network-first service worker (`sw.js`, same-origin GETs only,
+  cache fallback when offline). SW registration is skipped on `file://`.
+  If a stale version ever sticks on the phone, bump the `CACHE` name in
+  `sw.js`.
 - Fonts come from Google Fonts (Space Grotesk / Inter / JetBrains Mono). This
   is the only external dependency.
 
@@ -60,7 +67,7 @@ One HTML file with three sections:
    SVG room art, "before"/"after" variants per room), `PROJECTS` (placeholder
    data), render functions (`renderHome` / `renderProjects` / `renderBudget`),
    `wireSlider()` (before/after drag), `openDetail()` (project detail overlay),
-   nav, add sheet, inline manifest.
+   nav, add sheet, service-worker registration.
 
 ### Data shapes (these will become the backend schema later — keep them clean)
 
@@ -118,15 +125,17 @@ The home hero % is cost-weighted across all projects.
 
 ## How to verify changes
 
-No build, no tests. Open `reno-board.html` in a browser:
+No build, no tests. Serve `index.html` locally (the service worker and
+manifest need http, not `file://`):
 
 ```bash
-# from the project directory — phone testing needs a LAN host, not file://
+# from the project directory
 python3 -m http.server 8080
 ```
 
 Then check in responsive dev-tools mode at iPhone dimensions **and** on a real
-phone via LAN IP. Minimum manual pass: all 3 tabs, open a project, drag the
+phone — either via LAN IP or by pushing to `main` and opening
+<https://wildurbear.github.io/HR/>. Minimum manual pass: all 3 tabs, open a project, drag the
 slider both directions, check/uncheck a scope item, change a status, add a
 project via FAB, edit a project via the pencil (name/room/cost/hours),
 toggle scope Edit and rename/re-cost/add/delete a line item, tap notes and
@@ -161,7 +170,11 @@ Syntax check after JS edits: extract the script block and `node --check`.
       images (`<img>` in the `.ba` slider) while keeping SVG as the fallback —
       still no upload backend, just prove the layout works with photo
       aspect ratios.
-- [ ] Empty states for first run (zero projects) on all three tabs.
+- [x] Empty states for first run (zero projects) on all three tabs.
+      Done (Jun 2026): `renderHome`/`renderBudget` short-circuit with an
+      `.empty` block when `PROJECTS` is empty (previously this crashed —
+      `feat.room` on undefined / `Math.max()` of nothing); Projects tab
+      already had one. Delete-all then re-add is part of the manual pass.
 - [ ] Light haptic/visual feedback polish: pressed states, check animation.
 - [ ] Optional: per-room grouping toggle on the Projects tab.
 
@@ -171,4 +184,3 @@ Syntax check after JS edits: extract the script block and `node --check`.
 - Real photo capture/upload + storage
 - AI "after" render generation integration
 - Multi-user sync + real auth (decides whether attribution is real or local)
-- Service worker / offline caching once the file is hosted

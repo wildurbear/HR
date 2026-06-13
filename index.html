@@ -12,6 +12,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <style>
   :root{
     --plaster:#E9E6DF;
@@ -854,6 +857,10 @@ const nowStamp = () => {
     +' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 };
 const personName = id => PEOPLE[id] ? PEOPLE[id].name : 'Someone';
+/* user-entered text (titles, notes, scope items) goes through innerHTML —
+   always escape it; escAttr additionally covers quoted attribute values */
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const escAttr = s => esc(s).replace(/"/g,'&quot;');
 
 /* ----------------------------------------------------------
    RENDER
@@ -879,11 +886,19 @@ function renderHome(){
   document.getElementById('hs-todo').textContent   = PROJECTS.filter(p=>p.status==='todo').length;
   document.getElementById('hs-done').textContent   = PROJECTS.filter(p=>p.status==='done').length;
 
-  const feat = PROJECTS.find(p=>p.status==='doing') || PROJECTS[0];
   const fc = document.getElementById('featured');
+  if(!PROJECTS.length){
+    document.getElementById('hero-sub').textContent = '— nothing on the board yet';
+    fc.innerHTML = `<div class="empty" style="margin:28px 18px">
+      <div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/></svg></div>
+      <p>No projects yet. Tap <b>+</b> to add your first renovation —<br>its before/after reveal will land here.</p></div>`;
+    document.getElementById('home-next').innerHTML = '';
+    return;
+  }
+  const feat = PROJECTS.find(p=>p.status==='doing') || PROJECTS[0];
   fc.innerHTML = `
     <div class="reveal-head">
-      <span class="ttl"><span class="chip-dot" style="background:${ROOMS[feat.room].chip}"></span>${feat.title}</span>
+      <span class="ttl"><span class="chip-dot" style="background:${ROOMS[feat.room].chip}"></span>${esc(feat.title)}</span>
       <span class="count" style="font-family:var(--mono);font-size:11px;color:var(--muted)">${ROOMS[feat.room].name}</span>
     </div>
     ${baMarkup(feat)}`;
@@ -920,7 +935,7 @@ function cardMarkup(p){
     </div>
     <div class="body">
       <div class="row1"><span class="chip-dot" style="background:${ROOMS[p.room].chip}"></span><span class="room">${ROOMS[p.room].name}</span></div>
-      <h3>${p.title}</h3>
+      <h3>${esc(p.title)}</h3>
       <div class="meta">
         <div><div class="k">Est. cost</div><div class="v">${money(p.cost)}</div></div>
         <div><div class="k">Est. time</div><div class="v">${p.hours}h</div></div>
@@ -952,12 +967,19 @@ function renderBudget(){
   document.getElementById('bud-hours').innerHTML = totalHours+'<small>h</small>';
   document.getElementById('bud-note').textContent = money(spent)+' spent on finished work · '+money(totalCost-spent)+' still budgeted.';
 
-  const max = Math.max(...PROJECTS.map(p=>p.cost));
+  if(!PROJECTS.length){
+    document.getElementById('bud-note').textContent = 'Nothing budgeted yet.';
+    document.getElementById('budget-rows').innerHTML = `<div class="empty">
+      <div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg></div>
+      <p>Costs roll up here once you add a project.</p></div>`;
+    return;
+  }
+  const max = Math.max(...PROJECTS.map(p=>p.cost), 1);
   document.getElementById('budget-rows').innerHTML = PROJECTS.map(p=>{
     const c = ROOMS[p.room].chip;
     return `<div class="brow">
       <div class="top">
-        <div class="name"><span class="dot" style="background:${c}"></span><span>${p.title}</span></div>
+        <div class="name"><span class="dot" style="background:${c}"></span><span>${esc(p.title)}</span></div>
         <span class="amt">${money(p.cost)}</span>
       </div>
       <div class="track"><i style="width:${Math.round(p.cost/max*100)}%;background:${c}"></i></div>
@@ -996,7 +1018,7 @@ function activityLog(p){
   /* compile attribution events: newest first */
   const evs = [];
   if(p.statusBy) evs.push({by:p.statusBy, txt:`set status to <b>${STATUS_META[p.status].label}</b>`, at:p.statusAt});
-  p.scope.forEach(s=>{ if(s.done && s.by) evs.push({by:s.by, txt:`checked off <b>${s.t}</b>`, at:s.at}); });
+  p.scope.forEach(s=>{ if(s.done && s.by) evs.push({by:s.by, txt:`checked off <b>${esc(s.t)}</b>`, at:s.at}); });
   if(!evs.length) return '';
   evs.reverse();
   return `<div class="section-h">Activity</div>
@@ -1012,7 +1034,6 @@ function activityLog(p){
 let currentDetailId = null;
 let scopeEdit = false;
 let notesEdit = false;
-const escAttr = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 
 function openDetail(id, keepScroll){
   const p = PROJECTS.find(x=>x.id===id);
@@ -1034,7 +1055,7 @@ function openDetail(id, keepScroll){
       <div class="item ${s.done?'checked':''}" data-i="${i}">
         <div class="box">${s.done?checkIco:''}</div>
         <div class="mid">
-          <span class="txt">${s.t}</span>
+          <span class="txt">${esc(s.t)}</span>
           ${s.done && s.by ? `<span class="who">${checkIco}${personName(s.by)} · ${s.at}</span>` : ''}
         </div>
         <span class="cost">${money(s.c)}</span>
@@ -1045,7 +1066,7 @@ function openDetail(id, keepScroll){
         <textarea id="notes-input">${escAttr(p.notes)}</textarea>
         <button class="save-note" id="notes-save">Save notes</button>
       </div>`
-    : `<div class="notes tappable" id="notes-view"><b>Notes</b>${p.notes}<span class="edit-hint">tap to edit</span></div>`;
+    : `<div class="notes tappable" id="notes-view"><b>Notes</b>${esc(p.notes)}<span class="edit-hint">tap to edit</span></div>`;
 
   const statusStamp = p.statusBy
     ? `<div class="status-stamp">${checkIco}Marked “${STATUS_META[p.status].label}” by ${personName(p.statusBy)} · ${p.statusAt}</div>` : '';
@@ -1135,6 +1156,7 @@ function openDetail(id, keepScroll){
   /* status toggle — stamp who & when */
   ovScroll.querySelectorAll('#status-toggle button').forEach(b=>{
     b.addEventListener('click',()=>{
+      if(p.status===b.dataset.s) return; // re-tapping the active status must not re-stamp attribution
       p.status=b.dataset.s;
       p.statusBy=CURRENT_USER;
       p.statusAt=nowStamp();
@@ -1287,16 +1309,13 @@ document.querySelectorAll('#filters .filter').forEach(f=>{
 });
 
 /* ----------------------------------------------------------
-   PWA manifest (inline) + boot
+   PWA: service worker (manifest + icons are real files now
+   that the app is hosted; skip SW on file:// where it can't
+   register)
 ---------------------------------------------------------- */
-(function(){
-  const icon='data:image/svg+xml,'+encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="42" fill="#20242B"/><path d="M40 104 96 56l56 48v44H40z" fill="none" stroke="#1C6E6A" stroke-width="11" stroke-linejoin="round"/><circle cx="96" cy="118" r="13" fill="#E2A12E"/></svg>`);
-  const manifest={name:'Reno Board',short_name:'Reno',display:'standalone',background_color:'#E9E6DF',theme_color:'#20242B',start_url:'.',icons:[{src:icon,sizes:'192x192',type:'image/svg+xml',purpose:'any maskable'},{src:icon,sizes:'512x512',type:'image/svg+xml'}]};
-  const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
-  const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(blob);document.head.appendChild(l);
-  const al=document.createElement('link');al.rel='apple-touch-icon';al.href=icon;document.head.appendChild(al);
-})();
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
 
 function renderAll(){renderHome();renderProjects();renderBudget();}
 renderAll();
