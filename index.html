@@ -6,7 +6,16 @@
 <meta name="theme-color" content="#20242B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- iOS 26 short-viewport fix: 'black-translucent' runs the full-bleed
+     layout path that the iOS-26 PWA viewport bug breaks (viewport shrinks
+     by the 59px top inset but anchors at top → 59px dead strip BELOW the
+     nav; confirmed still present on iOS 26.5, vv=873 vs screen=932).
+     'default' uses the opaque-status-bar path that predates the bug: the
+     webview fills from below the status bar to the physical bottom, so the
+     inset is spent on the top bar and there is no bottom gap. NOTE: iOS
+     caches this at install time — the PWA must be removed and re-added for
+     it to take effect. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Reno Board">
 <title>Reno Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
