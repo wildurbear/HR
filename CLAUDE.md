@@ -101,10 +101,11 @@ The home hero % is cost-weighted across all projects.
   it there's a dead strip under the nav and the UI drifts after
   keyboard/scroll interactions. CSS units (`100dvh`/`100vh`/`inset:0`)
   all resolve against the same broken layout viewport, so they can't fix
-  it — and on affected devices `visualViewport.height` reports the same
-  short value, so in standalone mode the sync snaps to `screen.height`
-  (unless the shortfall is keyboard-sized). Don't remove the JS sync
-  even if the CSS looks sufficient. Only
+  it. The sync sizes `#app` from `visualViewport.height` (the true
+  visible height — on-device the notch device reported inner==vv==873
+  while `screen.height`==932 is the full panel incl. notch + indicator,
+  so `screen.height` overshoots by the top inset — do NOT use it).
+  Don't remove the JS sync even if the CSS looks sufficient. Only
   `.scroll` and `.ov-scroll` scroll. This is what keeps the bottom nav
   permanently pinned. Never let page-level scrolling come back.
 - **`.after-layer` in the slider must stay `position:absolute; inset:0`** —

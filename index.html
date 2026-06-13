@@ -1334,19 +1334,13 @@ if('serviceWorker' in navigator && location.protocol !== 'file:'){
   const vv = window.visualViewport;
   if(!vv) return;
   const app = document.getElementById('app');
-  const standalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
   function sync(){
     if(window.innerWidth >= 480){ app.style.height=''; return; } // desktop phone-frame sizes itself
-    let h = vv.height;
-    /* In buggy standalone mode even visualViewport reports the short
-       height. With no browser chrome the true visible height is the
-       physical screen (screen.height is portrait-anchored on iOS), so
-       snap to it — but only for a small shortfall; a big one means the
-       keyboard is up and vv.height is the value we want. */
-    if(standalone() && h < screen.height && h > screen.height * 0.75){
-      h = screen.height;
-    }
-    app.style.height = Math.round(h) + 'px';
+    /* visualViewport.height is the true visible height (on-device
+       diagnostic confirmed inner==vv==docEl==873 while screen==932 was
+       the full panel incl. the 59px notch + 34px indicator zones).
+       screen.height overshoots by the top inset, so DON'T use it. */
+    app.style.height = Math.round(vv.height) + 'px';
     if(window.scrollY || window.scrollX) window.scrollTo(0,0);
   }
   vv.addEventListener('resize', sync);
