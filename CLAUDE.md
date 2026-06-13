@@ -101,7 +101,10 @@ The home hero % is cost-weighted across all projects.
   it there's a dead strip under the nav and the UI drifts after
   keyboard/scroll interactions. CSS units (`100dvh`/`100vh`/`inset:0`)
   all resolve against the same broken layout viewport, so they can't fix
-  it — don't remove the JS sync even if the CSS looks sufficient. Only
+  it — and on affected devices `visualViewport.height` reports the same
+  short value, so in standalone mode the sync snaps to `screen.height`
+  (unless the shortfall is keyboard-sized). Don't remove the JS sync
+  even if the CSS looks sufficient. Only
   `.scroll` and `.ov-scroll` scroll. This is what keeps the bottom nav
   permanently pinned. Never let page-level scrolling come back.
 - **`.after-layer` in the slider must stay `position:absolute; inset:0`** —
@@ -149,6 +152,10 @@ toggle scope Edit and rename/re-cost/add/delete a line item, tap notes and
 save an edit, delete a project and hit Undo, confirm the nav never moves
 and every view opens at the top.
 Syntax check after JS edits: extract the script block and `node --check`.
+On-device viewport debugging: triple-tap the avatar to toggle an overlay of
+every viewport measurement (inner/visualViewport/screen/safe-area insets).
+Dev tool for the iOS standalone viewport bug — remove when the backend
+phase starts.
 
 ## TODO — next design tasks (in priority order)
 

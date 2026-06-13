@@ -1334,9 +1334,19 @@ if('serviceWorker' in navigator && location.protocol !== 'file:'){
   const vv = window.visualViewport;
   if(!vv) return;
   const app = document.getElementById('app');
+  const standalone = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
   function sync(){
     if(window.innerWidth >= 480){ app.style.height=''; return; } // desktop phone-frame sizes itself
-    app.style.height = Math.round(vv.height) + 'px';
+    let h = vv.height;
+    /* In buggy standalone mode even visualViewport reports the short
+       height. With no browser chrome the true visible height is the
+       physical screen (screen.height is portrait-anchored on iOS), so
+       snap to it — but only for a small shortfall; a big one means the
+       keyboard is up and vv.height is the value we want. */
+    if(standalone() && h < screen.height && h > screen.height * 0.75){
+      h = screen.height;
+    }
+    app.style.height = Math.round(h) + 'px';
     if(window.scrollY || window.scrollX) window.scrollTo(0,0);
   }
   vv.addEventListener('resize', sync);
@@ -1346,6 +1356,43 @@ if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('orientationchange', ()=>setTimeout(sync, 250));
   matchMedia('(min-width:480px)').addEventListener('change', sync);
   sync();
+})();
+
+/* ----------------------------------------------------------
+   Hidden viewport diagnostic — triple-tap the avatar to toggle
+   an overlay of every viewport measurement. Dev tool for
+   debugging the iOS standalone viewport bug on a real phone;
+   harmless to ship, remove once the backend phase starts.
+---------------------------------------------------------- */
+(function(){
+  const av = document.querySelector('.avatar');
+  let taps = [], el = null;
+  av.addEventListener('click', ()=>{
+    const now = Date.now();
+    taps = taps.filter(t => now - t < 700); taps.push(now);
+    if(taps.length < 3) return;
+    taps = [];
+    if(el){ el.remove(); el = null; return; }
+    const vv = window.visualViewport;
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);';
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    el = document.createElement('pre');
+    el.style.cssText = 'position:fixed;z-index:999;left:10px;top:90px;margin:0;background:rgba(0,0,0,.85);color:#7CFC9A;font:11px/1.6 monospace;padding:10px 12px;border-radius:10px;pointer-events:none;';
+    el.textContent = [
+      'inner   ' + innerWidth + ' x ' + innerHeight,
+      'vv      ' + (vv ? Math.round(vv.width) + ' x ' + Math.round(vv.height) + '  ot:' + vv.offsetTop + '  s:' + vv.scale : 'n/a'),
+      'screen  ' + screen.width + ' x ' + screen.height + '  avail:' + screen.availHeight,
+      'docEl   ' + document.documentElement.clientWidth + ' x ' + document.documentElement.clientHeight,
+      'app     ' + Math.round(document.getElementById('app').getBoundingClientRect().height),
+      'safe    T:' + cs.paddingTop + '  B:' + cs.paddingBottom,
+      'standalone ' + (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches),
+      'scrollY ' + scrollY,
+    ].join('\n');
+    probe.remove();
+    document.body.appendChild(el);
+  });
 })();
 
 function renderAll(){renderHome();renderProjects();renderBudget();}
